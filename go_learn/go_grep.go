@@ -8,108 +8,111 @@ import (
 	"strings"
 )
 
-
 type Grep struct {
-	pattern string
+	pattern    string
 	searchFile *os.File
 	ignoreCase bool
-	count bool
+	count      bool
 	lineNumber bool
 }
 
-func (g Grep) run() error {
+func (grep Grep) run() error {
 	var (
-		input *os.File;
-		scanner *bufio.Scanner;
+		input   *os.File
+		scanner *bufio.Scanner
 	)
 
-	if g.searchFile == nil {
+	if grep.searchFile == nil {
 		input = os.Stdin
 	} else {
-		input = g.searchFile;
+		input = grep.searchFile
 		defer input.Close()
 	}
 
-	if g.ignoreCase {
-		g.pattern = strings.ToLower(g.pattern)
-	} 
+	if grep.ignoreCase {
+		grep.pattern = strings.ToLower(grep.pattern)
+	}
 
 	scanner = bufio.NewScanner(input)
-	line_number := 1;
-	count := 0;
+	line_number := 1
+	count := 0
 	for scanner.Scan() {
-		text := scanner.Text();
-		if g.ignoreCase {
-			text = strings.ToLower(text);
+		text := scanner.Text()
+		if grep.ignoreCase {
+			text = strings.ToLower(text)
 		}
-		if strings.Contains(text, g.pattern) {
-			if g.count {
-				count++;	
+		if strings.Contains(text, grep.pattern) {
+			if grep.count {
+				count++
 			} else {
-				if g.lineNumber {
-					fmt.Printf("%d: ", line_number);
+				if grep.lineNumber {
+					fmt.Printf("%d: ", line_number)
 				}
-				fmt.Printf("%s\n",  text);
+				fmt.Printf("%s\n", text)
 			}
 		}
-		line_number++;
+		line_number++
 	}
-	if g.count {
-		fmt.Println(count);
+	if grep.count {
+		fmt.Println(count)
 	}
 	return scanner.Err()
 }
 
-func New(args []string) (Grep, error) {
-	if len(args) < 2 {return Grep{}, errors.New("empty args")}
+func NewGrep(args []string) (Grep, error) {
+	if len(args) < 2 {
+		return Grep{}, errors.New("empty args")
+	}
 
-	g := Grep {
-		pattern: "",
+	grep := Grep{
+		pattern:    "",
 		searchFile: nil,
 		ignoreCase: false,
-		count: false,
+		count:      false,
 		lineNumber: false,
 	}
 
 	for _, arg := range args[1:] {
 		if arg[0] == '-' {
-			if arg[1] == '-' {
+			if len(arg) == 1 {
+				grep.searchFile = os.Stdin	
+			} else if arg[1] == '-' {
 				switch arg[2:] {
-				case "ignore-case": g.ignoreCase = true;
-			 	case "count": g.count = true;
-				case "line-number": g.lineNumber = true;
-				default: return g, fmt.Errorf("unknown flag: %s\n", arg,)
+				case "ignore-case":
+					grep.ignoreCase = true
+				case "count":
+					grep.count = true
+				case "line-number":
+					grep.lineNumber = true
+				default:
+					return grep, fmt.Errorf("unknown flag: %s\n", arg)
 				}
 			} else {
 				for _, ch := range arg[1:] {
 					switch ch {
-					case 'i': g.ignoreCase = true;
-					case 'c': g.count = true;
-					case 'n': g.lineNumber = true;
-					default: return g, fmt.Errorf("unknown flag: %s\n", ch)
-					}	
-				}	
+					case 'i':
+						grep.ignoreCase = true
+					case 'c':
+						grep.count = true
+					case 'n':
+						grep.lineNumber = true
+					default:
+						return grep, fmt.Errorf("unknown flag: %s\n", ch)
+					}
+				}
 			}
-		
-		} else if g.pattern == "" {
-			g.pattern = arg;
+
+		} else if grep.pattern == "" {
+			grep.pattern = arg
 		} else if file, err := os.Open(arg); err != nil {
-			return g, fmt.Errorf("error with open file: %s\n", arg);
+			return grep, fmt.Errorf("error with open file: %s\n", arg)
 		} else {
-			g.searchFile = file
+			grep.searchFile = file
 		}
 	}
 
-	if g.pattern == "" {
-		return g, errors.New("pattern not found");
+	if grep.pattern == "" {
+		return grep, errors.New("pattern not found")
 	}
-	return g, nil
-}
-
-func main() {
-	if grep, err := New(os.Args); err != nil {
-		fmt.Printf("GREP: %s\n", err);
-	} else if err = grep.run(); err!=nil {
-		fmt.Printf("GREP: %s\n", err);
-	} 
+	return grep, nil
 }
